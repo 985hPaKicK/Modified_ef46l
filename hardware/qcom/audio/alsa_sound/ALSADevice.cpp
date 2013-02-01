@@ -1377,7 +1377,11 @@ char* ALSADevice::getUCMDevice(uint32_t devices, int input, char *rxDevice)
                               SND_USE_CASE_DEV_VOC_EARPIECE_XGAIN :
                               SND_USE_CASE_DEV_VOC_EARPIECE);
 #else
+#ifdef PANTECH_MSM8960
+                return strdup(SND_USE_CASE_DEV_EARPIECE); /* HANDSET RX */
+#else
                 return strdup(SND_USE_CASE_DEV_VOC_EARPIECE); /* Voice HANDSET RX */
+#endif
 #endif
             } else {
                 return strdup(SND_USE_CASE_DEV_EARPIECE); /* HANDSET RX */
@@ -1395,14 +1399,22 @@ char* ALSADevice::getUCMDevice(uint32_t devices, int input, char *rxDevice)
             if (mDevSettingsFlag & ANC_FLAG) {
                 if (mCallMode == AudioSystem::MODE_IN_CALL ||
                     mCallMode == AudioSystem::MODE_IN_COMMUNICATION) {
+#ifdef PANTECH_MSM8960
+                    return strdup(SND_USE_CASE_DEV_ANC_HEADSET); /* ANC HEADSET RX */
+#else
                     return strdup(SND_USE_CASE_DEV_VOC_ANC_HEADSET); /* Voice ANC HEADSET RX */
+#endif
                 } else {
                     return strdup(SND_USE_CASE_DEV_ANC_HEADSET); /* ANC HEADSET RX */
                 }
             } else {
                 if (mCallMode == AudioSystem::MODE_IN_CALL ||
                     mCallMode == AudioSystem::MODE_IN_COMMUNICATION) {
+#ifdef PANTECH_MSM8960
+                    return strdup(SND_USE_CASE_DEV_HEADPHONES); /* HEADSET RX */
+#else
                     return strdup(SND_USE_CASE_DEV_VOC_HEADPHONE); /* Voice HEADSET RX */
+#endif
                 } else {
                     return strdup(SND_USE_CASE_DEV_HEADPHONES); /* HEADSET RX */
                 }
@@ -1420,7 +1432,11 @@ char* ALSADevice::getUCMDevice(uint32_t devices, int input, char *rxDevice)
                    (devices & AudioSystem::DEVICE_OUT_ANC_HEADPHONE)) {
             if (mCallMode == AudioSystem::MODE_IN_CALL ||
                 mCallMode == AudioSystem::MODE_IN_COMMUNICATION) {
+#ifdef PANTECH_MSM8960
+                return strdup(SND_USE_CASE_DEV_ANC_HEADSET); /* ANC HEADSET RX */
+#else
                 return strdup(SND_USE_CASE_DEV_VOC_ANC_HEADSET); /* Voice ANC HEADSET RX */
+#endif
             } else {
                 return strdup(SND_USE_CASE_DEV_ANC_HEADSET); /* ANC HEADSET RX */
             }
