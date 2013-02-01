@@ -3907,6 +3907,18 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     }
 
+    private void CheckJack(int keyCode,  boolean down) {
+	    final AudioManager am = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+	    if ( keyCode == 232 ) {
+		    Log.d(TAG, "Set headphone mode");
+		    am.setWiredDeviceConnectionState(AudioManager.DEVICE_OUT_WIRED_HEADPHONE, down? 1 : 0, "h2w");
+	    }
+	    if ( keyCode == 234 ) {
+		    Log.d(TAG, "Set headset mode");
+		    am.setWiredDeviceConnectionState(AudioManager.DEVICE_OUT_WIRED_HEADSET, down? 1 : 0, "h2w");
+	    }
+    }
+
     /** {@inheritDoc} */
     @Override
     public int interceptKeyBeforeQueueing(KeyEvent event, int policyFlags, boolean isScreenOn) {
@@ -3973,6 +3985,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 }
             }
         }
+
+	    CheckJack(keyCode, down);
 
         // Handle special keys.
         switch (keyCode) {

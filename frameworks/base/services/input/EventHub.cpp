@@ -1143,7 +1143,11 @@ status_t EventHub::openDeviceLocked(const char *devicePath) {
     // Check whether this device has switches.
     for (int i = 0; i <= SW_MAX; i++) {
         if (test_bit(i, device->swBitmask)) {
+#ifdef EF46L
+            device->classes |= INPUT_DEVICE_CLASS_KEYBOARD;
+#else
             device->classes |= INPUT_DEVICE_CLASS_SWITCH;
+#endif
             break;
         }
     }

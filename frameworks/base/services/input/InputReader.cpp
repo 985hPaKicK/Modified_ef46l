@@ -2067,6 +2067,9 @@ void KeyboardInputMapper::reset(nsecs_t when) {
 
 void KeyboardInputMapper::process(const RawEvent* rawEvent) {
     switch (rawEvent->type) {
+#ifdef EF46L
+    case EV_SW:
+#endif
     case EV_KEY: {
         int32_t scanCode = rawEvent->code;
         int32_t usageCode = mCurrentHidUsage;
@@ -2079,6 +2082,10 @@ void KeyboardInputMapper::process(const RawEvent* rawEvent) {
                 keyCode = AKEYCODE_UNKNOWN;
                 flags = 0;
             }
+#ifdef EF46L
+	    if ( rawEvent->type == EV_SW )
+	    	keyCode = scanCode + 230;
+#endif
             processKey(rawEvent->when, rawEvent->value != 0, keyCode, scanCode, flags);
         }
         break;
