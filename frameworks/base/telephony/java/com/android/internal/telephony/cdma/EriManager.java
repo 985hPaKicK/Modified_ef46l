@@ -312,7 +312,9 @@ public final class EriManager {
             ret = new EriDisplayInformation(
                     EriInfo.ROAMING_INDICATOR_OFF,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    mContext.getText(com.android.internal.R.string.roamingText1).toString());
+//cm10 ef46l
+//                    mContext.getText(com.android.internal.R.string.roamingText1).toString());
+		    "LG U+");
             break;
 
         case EriInfo.ROAMING_INDICATOR_FLASH:
