@@ -411,6 +411,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mMin = cdmaSubscription[3];
                     mPrlVersion = cdmaSubscription[4];
                     if (DBG) log("GET_CDMA_SUBSCRIPTION: MDN=" + mMdn);
+//cm10 ef46l
+		    com.android.internal.telephony.cdma.sms.BearerData.callbackAddr = mMdn;
 
                     mIsMinInfoReady = true;
 

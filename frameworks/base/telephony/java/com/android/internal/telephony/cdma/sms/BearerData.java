@@ -43,7 +43,9 @@ import static android.telephony.SmsMessage.MAX_USER_DATA_BYTES_WITH_HEADER;
  */
 public final class BearerData {
     private final static String LOG_TAG = "SMS";
-
+//cm10 ef46l
+    // For LGT SMS
+    public static String callbackAddr = null;
     /**
      * Bearer Data Subparameter Identifiers
      * (See 3GPP2 C.S0015-B, v2.0, table 4.5-1)
@@ -476,15 +478,74 @@ public final class BearerData {
             boolean force7BitEncoding) {
         TextEncodingDetails ted;
         int septets = countAsciiSeptets(msg, force7BitEncoding);
-        if (septets != -1 && septets <= SmsMessage.MAX_USER_DATA_SEPTETS) {
+//cm10 ef46l
+	// For LGT SMS
+        //if (septets != -1 && septets <= SmsMessage.MAX_USER_DATA_SEPTETS) {
+	if (septets == 0) {
             ted = new TextEncodingDetails();
             ted.msgCount = 1;
             ted.codeUnitCount = septets;
-            ted.codeUnitsRemaining = SmsMessage.MAX_USER_DATA_SEPTETS - septets;
-            ted.codeUnitSize = SmsMessage.ENCODING_7BIT;
+
+//cm10 ef46l
+	    // For LGT SMS
+            ted.codeUnitsRemaining = 100 - septets;
+            ted.codeUnitSize = SmsMessage.ENCODING_16BIT;
+	    //ted.codeUnitsRemaining = SmsMessage.MAX_USER_DATA_SEPTETS - septets;
+            //ted.codeUnitSize = SmsMessage.ENCODING_7BIT;
+
         } else {
-            ted = com.android.internal.telephony.gsm.SmsMessage.calculateLength(
-                    msg, force7BitEncoding);
+            ted = com.android.internal.telephony.gsm.SmsMessage.calculateLength(msg, force7BitEncoding);
+//cm10 ef46l
+	    // For LGT SMS
+            ted.codeUnitSize = SmsMessage.ENCODING_16BIT;
+	    String tmpmsg = msg.toString();
+
+	    int textLen = tmpmsg.length();
+	    int pos = 0;
+            int nextPos = 0;  // Counts code units.
+	    int lastPos = 0;
+	    int MAX_LGT_SMS_BYTES = 100;	//100byte sms.
+
+	    ted.msgCount = 0; 
+	    ted.codeUnitCount = 0;
+    	    String tmptext = "";
+	    byte[] msgbyte = {0};
+    	    try {
+		    msgbyte = encodeKsc5601(tmpmsg);
+		    ted.codeUnitCount = msgbyte.length;
+    	    } catch (CodingException ex) {
+		    Log.e(LOG_TAG, "calcTextEncodingDetails encode failed1: " + ex);
+    	    }
+
+	    // msg byte <= MAX Byte
+	    if ( ted.codeUnitCount <= MAX_LGT_SMS_BYTES ) {
+		ted.msgCount = 1;
+		ted.codeUnitsRemaining = MAX_LGT_SMS_BYTES - ted.codeUnitCount;
+	    }
+
+	    // msg byte >= MAX Byte
+	    else {
+	        while ( lastPos < textLen ) {
+		    nextPos = 0;
+		    ted.codeUnitCount = 0;
+	    	    while ( (ted.codeUnitCount < (MAX_LGT_SMS_BYTES - 1)) && ((pos + nextPos) < textLen) ) {
+		    	nextPos++;
+		    	tmptext = tmpmsg.substring(pos, pos + nextPos);
+	    	    	try {
+			    	byte[] tmpmsgbyte = encodeKsc5601(tmptext);
+			    	ted.codeUnitCount = tmpmsgbyte.length;
+	    	    	} catch (CodingException ex) {
+			    	Log.e(LOG_TAG, "calcTextEncodingDetails encode failed2: " + ex);
+	    	    	}
+	    	    }
+		    lastPos = pos + nextPos;
+		    pos += nextPos;
+            	    ted.msgCount++;
+	    	}
+                ted.codeUnitsRemaining = MAX_LGT_SMS_BYTES - ted.codeUnitCount;
+	    }
+
+/*
             if (ted.msgCount == 1 && ted.codeUnitSize == SmsMessage.ENCODING_7BIT) {
                 // We don't support single-segment EMS, so calculate for 16-bit
                 // TODO: Consider supporting single-segment EMS
@@ -500,7 +561,7 @@ public final class BearerData {
                     ted.codeUnitsRemaining = (MAX_USER_DATA_BYTES - octets)/2;
                 }
                 ted.codeUnitSize = ENCODING_16BIT;
-            }
+            }*/
         }
         return ted;
     }
@@ -536,6 +597,17 @@ public final class BearerData {
             return msg.getBytes("utf-16be");
         } catch (java.io.UnsupportedEncodingException ex) {
             throw new CodingException("UTF-16 encode failed: " + ex);
+        }
+    }
+//cm10 ef46l
+    // For LGT SMS
+    private static byte[] encodeKsc5601(String msg)
+        throws CodingException
+    {
+        try {
+            return msg.getBytes("KSC5601");
+        } catch (java.io.UnsupportedEncodingException ex) {
+            throw new CodingException("KSC5601 encode failed: " + ex);
         }
     }
 
@@ -605,6 +677,25 @@ public final class BearerData {
         System.arraycopy(payload, 0, uData.payload, udhBytes, payload.length);
     }
 
+//cm10 ef46l
+    // For LGT SMS
+    private static void encodeKsc5601Ems(UserData uData, byte[] udhData)
+        throws CodingException
+    {
+        byte[] payload = encodeKsc5601(uData.payloadStr);
+        int udhBytes = udhData.length + 1;  // Add length octet.
+        int udhCodeUnits = (udhBytes + 1) / 2;
+        int udhPadding = udhBytes % 2;
+        int payloadCodeUnits = payload.length / 2;
+        uData.msgEncoding = UserData.ENCODING_KSC5601;
+        uData.msgEncodingSet = true;
+        uData.numFields = udhCodeUnits + payloadCodeUnits;
+        uData.payload = new byte[uData.numFields * 2];
+        uData.payload[0] = (byte)udhData.length;
+        System.arraycopy(udhData, 0, uData.payload, 1, udhData.length);
+        System.arraycopy(payload, 0, uData.payload, udhBytes + udhPadding, payload.length);
+    }
+
     private static void encodeEmsUserDataPayload(UserData uData)
         throws CodingException
     {
@@ -614,6 +705,10 @@ public final class BearerData {
                 encode7bitEms(uData, headerData, true);
             } else if (uData.msgEncoding == UserData.ENCODING_UNICODE_16) {
                 encode16bitEms(uData, headerData);
+//cm10 ef46l
+	// For LGT SMS
+            } else if (uData.msgEncoding == UserData.ENCODING_KSC5601) {
+                encodeKsc5601Ems(uData, headerData);
             } else {
                 throw new CodingException("unsupported EMS user data encoding (" +
                                           uData.msgEncoding + ")");
@@ -664,13 +759,37 @@ public final class BearerData {
                 } else if (uData.msgEncoding == UserData.ENCODING_UNICODE_16) {
                     uData.payload = encodeUtf16(uData.payloadStr);
                     uData.numFields = uData.payloadStr.length();
+//cm10 ef46l
+		// For LGT SMS
+                } else if (uData.msgEncoding == UserData.ENCODING_KSC5601) {
+                    uData.payload = encodeKsc5601(uData.payloadStr);
+                    uData.numFields = uData.payload.length;
                 } else {
                     throw new CodingException("unsupported user data encoding (" +
                                               uData.msgEncoding + ")");
                 }
             }
         } else {
+//cm10 ef46l
+	    // For LGT SMS
             try {
+                uData.payload = encodeKsc5601(uData.payloadStr);
+                uData.msgEncoding = UserData.ENCODING_KSC5601;
+		//To get correct numFields.
+                uData.numFields = uData.payload.length;
+            } catch (CodingException ex) {
+	            try {
+	                uData.payload = encode7bitAscii(uData.payloadStr, false);
+	                uData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
+	                uData.numFields = uData.payloadStr.length();
+	            } catch (CodingException ex2) {
+	                uData.payload = encodeUtf16(uData.payloadStr);
+	                uData.msgEncoding = UserData.ENCODING_UNICODE_16;
+	                uData.numFields = uData.payloadStr.length();
+	            }
+            }
+            uData.msgEncodingSet = true;
+/*            try {
                 uData.payload = encode7bitAscii(uData.payloadStr, false);
                 uData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
             } catch (CodingException ex) {
@@ -679,6 +798,7 @@ public final class BearerData {
             }
             uData.numFields = uData.payloadStr.length();
             uData.msgEncodingSet = true;
+*/
         }
     }
 
@@ -887,6 +1007,11 @@ public final class BearerData {
     public static byte[] encode(BearerData bData) {
         bData.hasUserDataHeader = ((bData.userData != null) &&
                 (bData.userData.userDataHeader != null));
+//cm10 ef46l
+	// For LGT SMS
+	if ( callbackAddr != null )
+		bData.callbackNumber = CdmaSmsAddress.parse(callbackAddr);
+
         try {
             BitwiseOutputStream outStream = new BitwiseOutputStream(200);
             outStream.write(8, SUBPARAM_MESSAGE_IDENTIFIER);
@@ -1096,6 +1221,18 @@ public final class BearerData {
         return decodeCharset(data, offset, numFields, 1, "ISO-8859-1");
     }
 
+//cm10 ef46l
+    // For LGT SMS
+    private static String decodeKsc5601(byte[] data, int offset, int numFields)
+        throws CodingException
+    {
+        try {
+            return new String(data, offset, numFields - offset, "KSC5601");
+        } catch (java.io.UnsupportedEncodingException ex) {
+            throw new CodingException("KSC5601 decode failed: " + ex);
+        }
+    }
+
     private static void decodeUserDataPayload(UserData userData, boolean hasUserDataHeader)
         throws CodingException
     {
@@ -1146,6 +1283,11 @@ public final class BearerData {
             break;
         case UserData.ENCODING_LATIN:
             userData.payloadStr = decodeLatin(userData.payload, offset, userData.numFields);
+            break;
+//cm10 ef46l
+	// For LGT SMS
+        case UserData.ENCODING_KSC5601:
+            userData.payloadStr = decodeKsc5601(userData.payload, offset, userData.numFields);
             break;
         default:
             throw new CodingException("unsupported user data encoding ("
